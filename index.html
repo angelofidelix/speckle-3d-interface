@@ -1,105 +1,55 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-  <meta charset="UTF-8" />
-  <title>Selecionar Objeto Speckle</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      margin: 20px;
-      background: #f4f4f4;
-    }
-    iframe {
-      border: 1px solid #ccc;
-      width: 100%;
-      height: 500px;
-    }
-    #idContainer {
-      margin-top: 20px;
-    }
-    #objectId {
-      width: 100%;
-      padding: 10px;
-      font-size: 16px;
-    }
-    button {
-      margin-top: 10px;
-      padding: 10px 20px;
-      font-size: 16px;
-      background-color: #4CAF50;
-      color: white;
-      border: none;
-      cursor: pointer;
-    }
-    button:hover {
-      background-color: #45a049;
-    }
-  </style>
-</head>
-<body>
-  <h2>Selecionar Objeto 3D do Speckle</h2>
-  <iframe id="speckleIframe" src="https://app.speckle.systems/projects/8f8ced29b4/models/f22627d137#embed=%7B%22isEnabled%22%3Atrue%7D" allowfullscreen></iframe>
+<html>
+  <head>
+    <title>Selecionar objeto do Speckle</title>
+    <script>
+      // Função para buscar o ID de forma dinâmica
+      function encontrarIDValido() {
+        const contêiner = document.querySelector('main');
+        if (!contêiner) return;
 
-  <div id="idContainer">
-    <label for="objectId">ID do Objeto Selecionado:</label>
-    <input type="text" id="objectId" readonly />
-    <button onclick="enviarParaPlanilha()">Enviar para Planilha</button>
-    <div id="resposta" style="margin-top:10px;color:green;"></div>
-  </div>
-
-  <script>
-    const iframe = document.getElementById("speckleIframe");
-
-    // Observa o painel lateral do iframe para capturar o ID do objeto
-    const observer = new MutationObserver(() => {
-      try {
-        const innerDoc = iframe.contentDocument || iframe.contentWindow.document;
-        const idSpan = innerDoc.querySelector("span.truncate");
-        if (idSpan) {
-          const id = idSpan.textContent;
-          document.getElementById("objectId").value = id;
+        const spans = contêiner.querySelectorAll('span');
+        for (let span of spans) {
+          const texto = span.innerText || "";
+          if (texto.startsWith("object:") || /^[0-9a-f]{20,}$/i.test(texto)) {
+            document.getElementById("selectedId").value = texto;
+            break;
+          }
         }
-      } catch (error) {
-        console.warn("Não foi possível acessar o conteúdo do iframe (restrição de CORS).");
-      }
-    });
-
-    iframe.addEventListener("load", () => {
-      try {
-        const innerDoc = iframe.contentDocument || iframe.contentWindow.document;
-        const targetNode = innerDoc.body;
-
-        observer.observe(targetNode, {
-          childList: true,
-          subtree: true
-        });
-      } catch (error) {
-        console.warn("Erro ao tentar observar o iframe:", error);
-      }
-    });
-
-    function enviarParaPlanilha() {
-      const id = document.getElementById("objectId").value;
-      if (!id) {
-        alert("Nenhum ID encontrado. Selecione um objeto no modelo 3D.");
-        return;
       }
 
-      fetch("https://script.google.com/macros/s/AKfycbxfFTnZqNKqYsTa5qCIonV53yxrBYWFdjPl-Ue6hnYfk3cRNjAGympJWIpXbrKuRpdc/exec", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({ id })
-      })
-        .then((response) => response.text())
-        .then((data) => {
-          document.getElementById("resposta").textContent = data;
+      // Atualiza o campo de ID a cada 2 segundos
+      setInterval(encontrarIDValido, 2000);
+
+      // Envia o ID para o Apps Script
+      function enviarId() {
+        const id = document.getElementById("selectedId").value;
+        if (!id) {
+          alert("Selecione um objeto primeiro.");
+          return;
+        }
+
+        fetch("https://script.google.com/macros/s/AKfycby9AK4hVUF7kwgbbWqwgSo_HjfUDrGd0uy15XEseaay0tIF8t3S2Ix4utf-KaoyPSJs/exec", {
+          method: "POST",
+          body: JSON.stringify({ id: id }),
+          headers: {
+            "Content-Type": "application/json",
+          },
         })
-        .catch((error) => {
-          console.error("Erro ao enviar:", error);
-        });
-    }
-  </script>
-</body>
+          .then((res) => res.text())
+          .then((resposta) => {
+            alert(resposta);
+            document.getElementById("selectedId").value = "";
+          })
+          .catch((erro) => {
+            alert("Erro ao enviar: " + erro);
+          });
+      }
+    </script>
+  </head>
+  <body>
+    <h2>Enviar ID Selecionado</h2>
+    <input type="text" id="selectedId" placeholder="ID do objeto aparecerá aqui" style="width: 300px;" readonly />
+    <button onclick="enviarId()">Enviar para Planilha</button>
+  </body>
 </html>
